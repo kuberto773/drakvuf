@@ -124,6 +124,8 @@
 #include "clipboardmon/clipboardmon.h"
 #include "windowmon/windowmon.h"
 #include "librarymon/librarymon.h"
+#include "jakubpluginmon/jakubpluginmon.h"
+#include "syscalls_myplug/syscalls.h" 
 #include "dkommon/dkommon.h"
 #include "wmimon/wmimon.h"
 #include "memdump/memdump.h"
@@ -378,6 +380,31 @@ int drakvuf_plugins::start(const drakvuf_plugin_t plugin_id,
                         .ntdll_profile = options->ntdll_profile,
                     };
                     this->plugins[plugin_id] = std::make_unique<librarymon>(this->drakvuf, &config, this->output);
+                    break;
+                }
+#endif
+#ifdef ENABLE_PLUGIN_JAKUBPLUGINMON
+                case PLUGIN_JAKUBPLUGINMON:
+                {
+                    jakubpluginmon_config config =
+                    {
+                        .ntdll_profile = options->ntdll_profile,
+                        .wow_kernel32_profile = options->wow_kernel32_profile,
+                    };
+                    this->plugins[plugin_id] = std::make_unique<jakubpluginmon>(this->drakvuf, &config, this->output);
+                    break;
+                }
+#endif
+#ifdef ENABLE_PLUGIN_SYSCALLSMYPLUGINMON
+                case PLUGIN_SYSCALLSMYPLUGINMON:
+                {
+                    syscalls_myplugin_config config =
+                    {
+                        .syscalls_filter_file = options->syscalls_filter_file,
+                        .win32k_profile = options->win32k_profile,
+                        .disable_sysret = options->disable_sysret,
+                    };
+                    this->plugins[plugin_id] = std::make_unique<syscalls_myplug>(this->drakvuf, &config, this->output);
                     break;
                 }
 #endif

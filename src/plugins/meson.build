@@ -147,6 +147,18 @@ if get_option('plugin-librarymon')
     config_h.set('ENABLE_PLUGIN_LIBRARYMON', 1)
 endif
 
+if get_option('plugin-jakubpluginmon')
+    plugin_sources += 'jakubpluginmon/jakubpluginmon.cpp'
+
+    config_h.set('ENABLE_PLUGIN_JAKUBPLUGINMON', 1)
+endif
+
+if get_option('plugin-syscallsmypluginmon')
+    plugin_sources += 'syscalls_myplug/syscalls.cpp'
+    plugin_sources += 'syscalls_myplug/win.cpp'
+
+    config_h.set('ENABLE_PLUGIN_SYSCALLSMYPLUGINMON', 1)
+endif
 if get_option('plugin-memdump')
     plugin_sources += 'memdump/memdump.cpp'
     plugin_sources += 'memdump/stack_util.cpp'

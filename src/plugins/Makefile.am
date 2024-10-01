@@ -245,6 +245,21 @@ sources += librarymon/librarymon.cpp
 sources += librarymon/librarymon.h
 endif
 
+if PLUGIN_JAKUBPLUGINMON
+sources += jakubpluginmon/jakubpluginmon.cpp
+sources += jakubpluginmon/jakubpluginmon.h
+endif
+
+if PLUGIN_SYSCALLSMYPLUGINMON
+sources += syscalls_myplug/private_2.h
+sources += syscalls_myplug/private.h
+sources += syscalls_myplug/syscalls.cpp
+sources += syscalls_myplug/syscalls.h
+sources += syscalls_myplug/win.cpp
+sources += syscalls_myplug/win.h
+endif
+
+
 if PLUGIN_DKOMMON
 sources += dkommon/dkommon.cpp
 sources += dkommon/dkommon.h

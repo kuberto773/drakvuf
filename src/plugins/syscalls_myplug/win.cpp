@@ -114,7 +114,7 @@
 
 #include "win.h"
 
-using namespace syscalls_ns;
+using namespace syscalls_myplug_ns;
 
 // This is the list of system libraries that use syscalls.
 //
@@ -129,7 +129,7 @@ static std::string whitelisted_libraries[] =
 
 static bool enum_modules_cb(drakvuf_t dravkuf, const module_info_t* module_info, bool* need_free, bool* need_stop, void* ctx)
 {
-    auto plugin   = static_cast<win_syscalls*>(ctx);
+    auto plugin   = static_cast<win_syscalls_myplug*>(ctx);
     auto& modules = plugin->procs[module_info->pid];
     modules.push_back(
     {
@@ -143,7 +143,7 @@ static bool enum_modules_cb(drakvuf_t dravkuf, const module_info_t* module_info,
 static event_response_t ret_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
     //Loads a pointer to the plugin, which is responsible for the trap
-    auto s = get_trap_plugin<win_syscalls>(info);
+    auto s = get_trap_plugin<win_syscalls_myplug>(info);
 
     //get_trap_params reinterprets the pointer of info->trap->data as a pointer to duplicate_result_t
     auto wr = get_trap_params<wrapper_t>(info);
@@ -225,7 +225,7 @@ static std::vector<uint64_t> extract_args(drakvuf_t drakvuf, drakvuf_trap_info_t
     return args;
 }
 
-static std::optional<std::string> resolve_module(drakvuf_t drakvuf, addr_t addr, addr_t process, vmi_pid_t pid, win_syscalls* s)
+static std::optional<std::string> resolve_module(drakvuf_t drakvuf, addr_t addr, addr_t process, vmi_pid_t pid, win_syscalls_myplug* s)
 {
     auto lookup = [&]() -> std::optional<std::string>
     {
@@ -311,7 +311,7 @@ static addr_t get_syscall_retaddr(drakvuf_t drakvuf, drakvuf_trap_info_t* info, 
     return user_ret_addr;
 }
 
-static std::optional<std::string> resolve_parent_module(drakvuf_t drakvuf, drakvuf_trap_info_t* info, win_syscalls* s)
+static std::optional<std::string> resolve_parent_module(drakvuf_t drakvuf, drakvuf_trap_info_t* info, win_syscalls_myplug* s)
 {
     vmi_lock_guard vmi(drakvuf);
     addr_t rsp, top;
@@ -327,7 +327,7 @@ static std::optional<std::string> resolve_parent_module(drakvuf_t drakvuf, drakv
 /// Get module that called Nt (syscall) function and previous mode.
 ///
 static std::tuple<privilege_mode_t, std::optional<std::string>, std::optional<std::string>>
-    get_syscall_retinfo(drakvuf_t drakvuf, drakvuf_trap_info_t* info, win_syscalls* s)
+    get_syscall_retinfo(drakvuf_t drakvuf, drakvuf_trap_info_t* info, win_syscalls_myplug* s)
     { 
     if (s->is32bit)
     {
@@ -371,7 +371,7 @@ static std::tuple<privilege_mode_t, std::optional<std::string>, std::optional<st
 
 static event_response_t syscall_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
-    auto s = get_trap_plugin<win_syscalls>(info);
+    auto s = get_trap_plugin<win_syscalls_myplug>(info);
     auto w = get_trap_params<wrapper_t>(info);
     const syscall_t* sc = w->sc;
     auto num_args = sc ? sc->num_args : 0;
@@ -414,7 +414,7 @@ static event_response_t syscall_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
     return VMI_EVENT_RESPONSE_NONE;
 }
 
-bool win_syscalls::trap_syscall_table_entries(drakvuf_t drakvuf, vmi_instance_t vmi, addr_t cr3, bool ntos, addr_t base, std::array<addr_t, 2> _sst, json_object* json)
+bool win_syscalls_myplug::trap_syscall_table_entries(drakvuf_t drakvuf, vmi_instance_t vmi, addr_t cr3, bool ntos, addr_t base, std::array<addr_t, 2> _sst, json_object* json)
 {
     unsigned int syscall_count = ntos ? NUM_SYSCALLS_NT : NUM_SYSCALLS_WIN32K;
     const syscall_t** definitions = ntos ? nt : win32k;
@@ -477,7 +477,7 @@ bool win_syscalls::trap_syscall_table_entries(drakvuf_t drakvuf, vmi_instance_t 
                     {
                         if ( !strcmp(definitions[d]->name, symbol->name) )
                         {
-                            definition = definitions[d]; // get the definition for syscall from debug symbols
+                            definition = definitions[d]; // get the definition for syscall from static array in win.h
                             break;
                         }
                     }
@@ -492,6 +492,7 @@ bool win_syscalls::trap_syscall_table_entries(drakvuf_t drakvuf, vmi_instance_t 
             PRINT_DEBUG("\t Syscall %lu @ 0x%lx has no debug information matching it with RVA 0x%lx. Table: 0x%lx Offset: 0x%lx\n", syscall_num, syscall_va, rva, _sst[0], offset);
         else if ( !definition )
         {
+            continue;
             gchar* tmp = g_strdup(symbol->name);
             this->strings_to_free = g_slist_prepend(this->strings_to_free, tmp);
             symbol_name = (const char*)tmp;
@@ -540,8 +541,8 @@ bool win_syscalls::trap_syscall_table_entries(drakvuf_t drakvuf, vmi_instance_t 
     return true;
 }
 
-win_syscalls::win_syscalls(drakvuf_t drakvuf, const syscalls_config* config, output_format_t output)
-    : syscalls_base(drakvuf, config, output)
+win_syscalls_myplug::win_syscalls_myplug(drakvuf_t drakvuf, const syscalls_myplugin_config* config, output_format_t output)
+    : syscalls_myplugin_base(drakvuf, config, output)
     , win32k_profile{ config->win32k_profile ?: "" }
 {
     auto vmi = vmi_lock_guard(drakvuf);
@@ -609,13 +610,13 @@ win_syscalls::win_syscalls(drakvuf_t drakvuf, const syscalls_config* config, out
     if (!this->setup_win32k_syscalls(drakvuf))
     {
         PRINT_DEBUG("[SYSCALLS] Delay hooks initialization\n");
-        this->load_driver_hook = this->createSyscallHook("NtLoadDriver", &win_syscalls::load_driver_cb);
-        this->create_process_hook = this->createSyscallHook("NtCreateUserProcess", &win_syscalls::create_process_cb);
+        this->load_driver_hook = this->createSyscallHook("NtLoadDriver", &win_syscalls_myplug::load_driver_cb);
+        this->create_process_hook = this->createSyscallHook("NtCreateUserProcess", &win_syscalls_myplug::create_process_cb);
     }
-    this->delete_process_hook = this->createSyscallHook("PspProcessDelete", &win_syscalls::delete_process_cb);
+    this->delete_process_hook = this->createSyscallHook("PspProcessDelete", &win_syscalls_myplug::delete_process_cb);
 }
 
-bool win_syscalls::setup_win32k_syscalls(drakvuf_t drakvuf)
+bool win_syscalls_myplug::setup_win32k_syscalls(drakvuf_t drakvuf)
 {
     auto vmi = vmi_lock_guard(drakvuf);
 
@@ -674,7 +675,7 @@ bool win_syscalls::setup_win32k_syscalls(drakvuf_t drakvuf)
     return true;
 }
 
-char* win_syscalls::win_extract_string(drakvuf_t drakvuf, drakvuf_trap_info_t* info, const arg_t& arg, addr_t val)
+char* win_syscalls_myplug::win_extract_string(drakvuf_t drakvuf, drakvuf_trap_info_t* info, const arg_t& arg, addr_t val)
 {
     if (arg.type == PUNICODE_STRING)
     {
@@ -702,7 +703,7 @@ char* win_syscalls::win_extract_string(drakvuf_t drakvuf, drakvuf_trap_info_t* i
     return nullptr;
 }
 
-event_response_t win_syscalls::load_driver_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
+event_response_t win_syscalls_myplug::load_driver_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
     addr_t service_name_addr = drakvuf_get_function_argument(drakvuf, info, 1);
     unicode_string_t* service_name = drakvuf_read_unicode(drakvuf, info, service_name_addr);
@@ -729,7 +730,7 @@ event_response_t win_syscalls::load_driver_cb(drakvuf_t drakvuf, drakvuf_trap_in
     return VMI_EVENT_RESPONSE_NONE;
 }
 
-event_response_t win_syscalls::create_process_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
+event_response_t win_syscalls_myplug::create_process_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
     addr_t user_process_parameters_addr = drakvuf_get_function_argument(drakvuf, info, 9);
     addr_t imagepath_addr = user_process_parameters_addr + this->image_path_name;
@@ -748,7 +749,7 @@ event_response_t win_syscalls::create_process_cb(drakvuf_t drakvuf, drakvuf_trap
         {
             this->create_process_hook = {};
 
-            auto hook = createReturnHook<PluginResult>(info, &win_syscalls::create_process_ret_cb);
+            auto hook = createReturnHook<PluginResult>(info, &win_syscalls_myplug::create_process_ret_cb);
             this->wait_process_creation_hook = std::move(hook);
         }
         g_free(image_path_casefold);
@@ -757,7 +758,7 @@ event_response_t win_syscalls::create_process_cb(drakvuf_t drakvuf, drakvuf_trap
     return VMI_EVENT_RESPONSE_NONE;
 }
 
-event_response_t win_syscalls::create_process_ret_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
+event_response_t win_syscalls_myplug::create_process_ret_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
     auto params = libhook::GetTrapParams<PluginResult>(info);
     if (!params->verifyResultCallParams(drakvuf, info))
@@ -771,7 +772,7 @@ event_response_t win_syscalls::create_process_ret_cb(drakvuf_t drakvuf, drakvuf_
     return VMI_EVENT_RESPONSE_NONE;
 }
 
-event_response_t win_syscalls::delete_process_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
+event_response_t win_syscalls_myplug::delete_process_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info)
 {
     addr_t process = drakvuf_get_function_argument(drakvuf, info, 1);
 
@@ -782,7 +783,7 @@ event_response_t win_syscalls::delete_process_cb(drakvuf_t drakvuf, drakvuf_trap
     return VMI_EVENT_RESPONSE_NONE;
 }
 
-void win_syscalls::print_syscall(
+void win_syscalls_myplug::print_syscall(
     drakvuf_t drakvuf, drakvuf_trap_info_t* info,
     int nr, const char* module, const syscall_t* sc,
     std::vector<uint64_t> args, privilege_mode_t mode,
@@ -822,7 +823,7 @@ void win_syscalls::print_syscall(
     if (mode != MAXIMUM_MODE)
         priv_mode_opt = fmt::Rstr(mode == USER_MODE ? "User" : "Kernel");
 
-    fmt::print(this->m_output_format, "syscall", drakvuf, info,
+    fmt::print(this->m_output_format, "SYSCALL-JAKUB", drakvuf, info,
         keyval("Module", fmt::Qstr(std::move(module))),
         keyval("vCPU", fmt::Nval(info->vcpu)),
         keyval("CR3", fmt::Xval(info->regs->cr3)),
@@ -835,7 +836,7 @@ void win_syscalls::print_syscall(
     );
 }
 
-win_syscalls::~win_syscalls()
+win_syscalls_myplug::~win_syscalls_myplug()
 {
     GSList* loop = this->strings_to_free;
     while (loop)

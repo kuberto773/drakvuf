@@ -351,6 +351,26 @@ if test x$plugin_librarymon = xyes; then
   AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_LIBRARYMON, 1, "")
 fi
 
+AC_ARG_ENABLE([plugin_jakubpluginmon],
+  [AS_HELP_STRING([--disable-plugin-jakubpluginmon],
+    [Enable the windows library monitor plugin @<:@yes@:>@])],
+  [jakubpluginmon="$enableval"],
+  [jakubpluginmon="yes"])
+AM_CONDITIONAL([PLUGIN_JAKUBPLUGINMON], [test x$plugin_ljakubpluginmon = xyes])
+if test x$plugin_jakubpluginmon = xyes; then
+  AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_JAKUBPLUGINMON, 1, "")
+fi
+
+AC_ARG_ENABLE([plugin_syscallsmypluginmon],
+  [AS_HELP_STRING([--disable-plugin-syscallsmypluginmon],
+    [Enable the windows library monitor plugin @<:@yes@:>@])],
+  [syscallsmypluginmon="$enableval"],
+  [syscallsmypluginmon="yes"])
+AM_CONDITIONAL([PLUGIN_SYSCALLSMYPLUGINMON], [test x$plugin_syscallsmypluginmon = xyes])
+if test x$plugin_syscallsmypluginmon = xyes; then
+  AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_SYSCALLSMYPLUGINMON, 1, "")
+fi
+
 AC_ARG_ENABLE([plugin_dkommon],
   [AS_HELP_STRING([--disable-plugin-dkommon],
     [Enable the windows DKOM attacks watching plugin @<:@yes@:>@])],
@@ -892,6 +912,8 @@ CrashMon:           $plugin_crashmon
 ClipboardMon:       $plugin_clipboardmon
 WindowMon:          $plugin_windowmon
 LibraryMon:         $plugin_librarymon
+JakubpluginMon:     $plugin_jakubpluginmon
+SyscallsMyPluginMon: $plugin_syscallsmypluginmon
 DKOMmon:            $plugin_dkommon
 MEMDump:            $plugin_memdump
 ProcDump:           $plugin_procdump
