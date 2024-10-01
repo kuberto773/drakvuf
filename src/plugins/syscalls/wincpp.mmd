@@ -1,0 +1,19 @@
+flowchart TD
+    win_syscalls --> vmi_read_ksym["1 - vmi_read_ksym find syscall table via kernel with the help of provided json symbols file, read KeServiceDescriptorTableShadow data structure"]
+    vmi_read_ksym --> vmi_pid_to_dtb["2 - vmi_pid_to_dtb(0) - find address of global page directory for kernel space - therefore pid 0"]
+    vmi_pid_to_dtb --> drakvuf_get_kernel_struct_member_rva["3 - drakvuf_get_kernel_struct_member_rva - read ImagePathName attribute offset in kernel via symbols - for the CreateProcess callback"]
+    drakvuf_get_kernel_struct_member_rva --> trap_syscall_table_entries
+    trap_syscall_table_entries --> setup_win32k_syscalls(5 - setup_win32k_syscalls - trap win32k syscalls by finding win32 via debug symbol -> explorer -> dtb -> trap syscall table entries)
+    setup_win32k_syscalls --> NtLoadDriver(createSyscallhook NtLoadDriver)
+    NtLoadDriver --> NtCreateUserProcess(createSyscallhook NtCreateUserProcess)
+    NtCreateUserProcess --> PspProcessDelete(createSyscallhook PspProcessDelete)
+
+    subgraph trap_syscall_table_entries
+        getSymbols["read provided symbols"] --> readTable["read system call addresses via vmi to variable table"]
+        readTable --> getSyscall_va(get virtual address of syscall)
+        getSyscall_va --> getRVA(get virtual address by substracting base of the table)
+        getRVA --> getSymbol(get symbol for syscall)
+        getSymbol --> getDefinition(get definition for syscall - acquire it from symbols based on rva)
+        getDefinition --> setTrapForSyscall(set trap for syscall)
+    end
+    
