@@ -823,17 +823,25 @@ void win_syscalls_myplug::print_syscall(
     if (mode != MAXIMUM_MODE)
         priv_mode_opt = fmt::Rstr(mode == USER_MODE ? "User" : "Kernel");
 
-    fmt::print(this->m_output_format, "SYSCALL-JAKUB", drakvuf, info,
-        keyval("Module", fmt::Qstr(std::move(module))),
-        keyval("vCPU", fmt::Nval(info->vcpu)),
-        keyval("CR3", fmt::Xval(info->regs->cr3)),
-        keyval("Syscall", fmt::Nval(nr)),
-        keyval("NArgs", fmt::Nval(args.size())),
-        keyval("PreviousMode", priv_mode_opt),
-        keyval("FromModule", from_dll_opt),
-        keyval("FromParentModule", from_parent_dll_opt),
-        std::move(fmt_args)
-    );
+    if ( nr == 8 )
+    {
+        // addr_t bytes_attr = drakvuf_get_function_argument(drakvuf, info, 3);
+        fmt::print(this->m_output_format, "SYSCALLS-CUSTOM", drakvuf, nullptr,
+        keyval("NtWriteFile", fmt::Qstr("NtWriteFile was used !"))
+        );
+    }
+
+    // fmt::print(this->m_output_format, "SYSCALL-JAKUB", drakvuf, info,
+    //     keyval("Module", fmt::Qstr(std::move(module))),
+    //     keyval("vCPU", fmt::Nval(info->vcpu)),
+    //     keyval("CR3", fmt::Xval(info->regs->cr3)),
+    //     keyval("Syscall", fmt::Nval(nr)),
+    //     keyval("NArgs", fmt::Nval(args.size())),
+    //     keyval("PreviousMode", priv_mode_opt),
+    //     keyval("FromModule", from_dll_opt),
+    //     keyval("FromParentModule", from_parent_dll_opt),
+    //     std::move(fmt_args)
+    // );
 }
 
 win_syscalls_myplug::~win_syscalls_myplug()

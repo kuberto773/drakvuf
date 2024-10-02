@@ -187,6 +187,18 @@ SYSCALL(NtOpenFile, NTSTATUS,
     "OpenOptions", "", DIR_IN, ULONG,
 );
 
+SYSCALL(NtWriteFile, NTSTATUS,
+    "FileHandle", "", DIR_IN, HANDLE,
+    "Event", "opt", DIR_IN, HANDLE,
+    "ApcRoutine", "opt", DIR_IN, PIO_APC_ROUTINE,
+    "ApcContext", "opt", DIR_IN, PVOID,
+    "IoStatusBlock", "", DIR_OUT, PIO_STATUS_BLOCK,
+    "Buffer", "bcount(Length)", DIR_IN, PVOID,
+    "Length", "", DIR_IN, ULONG,
+    "ByteOffset", "opt", DIR_IN, PLARGE_INTEGER,
+    "Key", "opt", DIR_IN, PULONG,
+);
+
 // WIN32K
 
 SYSCALL(NtBindCompositionSurface, NTSTATUS);
@@ -195,7 +207,7 @@ SYSCALL(NtBindCompositionSurface, NTSTATUS);
 
 static const syscall_t* nt[] =
 {
-    &NtOpenFile
+    &NtWriteFile
 };
 static const syscall_t* win32k[] =
 {
