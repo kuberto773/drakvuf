@@ -825,6 +825,30 @@ void win_syscalls_myplug::print_syscall(
 
     if ( nr == 8 )
     {
+        const char key[] = "Length";
+
+        // Use std::find_if to find the pair with the given key
+        // The lambda function checks if the first element of
+        // the pair is equal to the key
+        auto it = std::find_if(
+            this->fmt_args.begin(), this->fmt_args.end(),
+            [key](const auto& p) { return strcmp(p.first, key) == 0; }
+        );
+
+        if (it != this->fmt_args.end()) {
+            // Key was found, do something with it
+            fmt::Aarg value = it->second;
+            fmt::print(this->m_output_format, "SYSCALLS-CUSTOM", drakvuf, nullptr,
+                keyval("Length argument found !", value)
+            );
+        } 
+        else {
+            // Key not found
+            fmt::print(this->m_output_format, "SYSCALLS-CUSTOM", drakvuf, nullptr,
+                keyval("Length argument not found !", fmt::Qstr(""))
+            );
+        }
+
         // addr_t bytes_attr = drakvuf_get_function_argument(drakvuf, info, 3);
         fmt::print(this->m_output_format, "SYSCALLS-CUSTOM", drakvuf, nullptr,
         keyval("NtWriteFile", fmt::Qstr("NtWriteFile was used !"))
